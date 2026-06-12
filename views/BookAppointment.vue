@@ -15,18 +15,34 @@
 
         <form class="row g-3" @submit.prevent="submitAppointment">
           <div class="col-12">
-            <input v-model="name" type="text" class="form-control" placeholder="Your Name" required />
+            <input
+              v-model="name"
+              type="text"
+              class="form-control"
+              placeholder="Your Name"
+              required
+            />
           </div>
 
           <div class="col-12">
-            <input v-model="symptoms" type="text" class="form-control" placeholder="Symptoms" required />
+            <input
+              v-model="symptoms"
+              type="text"
+              class="form-control"
+              placeholder="Symptoms"
+              required
+            />
           </div>
 
           <div class="col-12">
             <select v-model="selectedSlot" class="form-select" required>
               <option disabled value="">Select a Time Slot</option>
 
-              <option v-for="slot in slots" :key="slot" :value="slot">
+              <option
+                v-for="slot in slots"
+                :key="slot"
+                :value="slot"
+              >
                 {{ slot }}
               </option>
             </select>
@@ -65,28 +81,19 @@ export default {
       fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/slots")
         .then(res => res.json())
         .then(data => {
-          console.log("Slots API response:", data);
+          console.log("API response:", data);
 
-          let parsed = data.body ? JSON.parse(data.body) : data;
-
-          if (!Array.isArray(parsed)) {
-            parsed = parsed.Items || [];
-          }
+          const parsed = JSON.parse(data.body);
 
           this.slots = parsed
-            .filter(slot =>
-              slot.isBooked === false ||
-              slot.isBooked === "false" ||
-              slot.isBooked === 0
-            )
-            .map(slot => slot.slots)
-            .filter(Boolean);
+            .filter(item => item.isBooked === false)
+            .map(item => item.slots);
 
           console.log("Final slots:", this.slots);
         })
         .catch(err => {
           console.error("Error loading slots:", err);
-          alert("Failed to load time slots. This is probably still CORS/API Gateway.");
+          alert("Failed to load time slots.");
         });
     },
 
@@ -105,7 +112,9 @@ export default {
         body: JSON.stringify(payload)
       })
         .then(res => res.json())
-        .then(() => {
+        .then(data => {
+          console.log("Appointment response:", data);
+
           alert("Appointment booked!");
 
           this.name = "";
