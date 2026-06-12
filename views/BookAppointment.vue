@@ -15,34 +15,18 @@
 
         <form class="row g-3" @submit.prevent="submitAppointment">
           <div class="col-12">
-            <input
-              v-model="name"
-              type="text"
-              class="form-control"
-              placeholder="Your Name"
-              required
-            />
+            <input v-model="name" type="text" class="form-control" placeholder="Your Name" required />
           </div>
 
           <div class="col-12">
-            <input
-              v-model="symptoms"
-              type="text"
-              class="form-control"
-              placeholder="Symptoms"
-              required
-            />
+            <input v-model="symptoms" type="text" class="form-control" placeholder="Symptoms" required />
           </div>
 
           <div class="col-12">
             <select v-model="selectedSlot" class="form-select" required>
               <option disabled value="">Select a Time Slot</option>
 
-              <option
-                v-for="slot in slots"
-                :key="slot"
-                :value="slot"
-              >
+              <option v-for="slot in slots" :key="slot" :value="slot">
                 {{ slot }}
               </option>
             </select>
@@ -79,11 +63,30 @@ export default {
   methods: {
     fetchSlots() {
       fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/slots")
-        .then(res => res.json())
-        .then(data => {
-          const parsed = data.body ? JSON.parse(data.body) : data;
+        .then(async res => {
+          const text = await res.text();
+          console.log("RAW slots response:", text);
 
-          console.log("Slots API response:", parsed);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${text}`);
+          }
+
+          return JSON.parse(text);
+        })
+        .then(data => {
+          console.log("Parsed slots response:", data);
+
+          let parsed = data;
+
+          if (data.body) {
+            parsed = typeof data.body === "string"
+              ? JSON.parse(data.body)
+              : data.body;
+          }
+
+          if (!Array.isArray(parsed)) {
+            parsed = parsed.slots || parsed.Items || [];
+          }
 
           this.slots = parsed
             .filter(slot =>
@@ -91,13 +94,14 @@ export default {
               slot.isBooked === "false" ||
               slot.isBooked === 0
             )
-            .map(slot => slot.slot);
+            .map(slot => slot.slot || slot.time || slot.timeSlot)
+            .filter(Boolean);
 
-          console.log("Available slots:", this.slots);
+          console.log("Final slots:", this.slots);
         })
         .catch(err => {
           console.error("Error loading slots:", err);
-          alert("Failed to load time slots.");
+          alert("Failed to load time slots. Check console.");
         });
     },
 
@@ -108,18 +112,15 @@ export default {
         slot: this.selectedSlot
       };
 
-      fetch(
-        "https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/appointments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            body: JSON.stringify(payload)
-          })
-        }
-      )
+      fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          body: JSON.stringify(payload)
+        })
+      })
         .then(res => res.json())
         .then(() => {
           alert("Appointment booked!");
