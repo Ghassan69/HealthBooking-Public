@@ -63,29 +63,14 @@ export default {
   methods: {
     fetchSlots() {
       fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/slots")
-        .then(async res => {
-          const text = await res.text();
-          console.log("RAW slots response:", text);
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${text}`);
-          }
-
-          return JSON.parse(text);
-        })
+        .then(res => res.json())
         .then(data => {
-          console.log("Parsed slots response:", data);
+          console.log("Slots API response:", data);
 
-          let parsed = data;
-
-          if (data.body) {
-            parsed = typeof data.body === "string"
-              ? JSON.parse(data.body)
-              : data.body;
-          }
+          let parsed = data.body ? JSON.parse(data.body) : data;
 
           if (!Array.isArray(parsed)) {
-            parsed = parsed.slots || parsed.Items || [];
+            parsed = parsed.Items || [];
           }
 
           this.slots = parsed
@@ -94,14 +79,14 @@ export default {
               slot.isBooked === "false" ||
               slot.isBooked === 0
             )
-            .map(slot => slot.slot || slot.time || slot.timeSlot)
+            .map(slot => slot.slots)
             .filter(Boolean);
 
           console.log("Final slots:", this.slots);
         })
         .catch(err => {
           console.error("Error loading slots:", err);
-          alert("Failed to load time slots. Check console.");
+          alert("Failed to load time slots. This is probably still CORS/API Gateway.");
         });
     },
 
@@ -118,7 +103,6 @@ export default {
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
-        
       })
         .then(res => res.json())
         .then(() => {
