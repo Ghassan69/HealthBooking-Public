@@ -3,9 +3,7 @@
     <nav class="navbar navbar-light bg-white shadow-sm mb-4">
       <div class="container d-flex justify-content-between align-items-center">
         <span class="fw-bold fs-5">Doctor Appointments</span>
-        <router-link to="/" class="btn btn-outline-primary">
-          ⇆ Switch Page
-        </router-link>
+        <router-link to="/" class="btn btn-outline-primary">⇆ Switch Page</router-link>
       </div>
     </nav>
 
@@ -28,15 +26,15 @@
             </thead>
 
             <tbody>
-              <tr
-                v-for="appointment in appointments"
-                :key="appointment.appointmentId"
-              >
+              <tr v-if="appointments.length === 0">
+                <td colspan="5" class="text-center p-3">No appointments found</td>
+              </tr>
+
+              <tr v-for="appointment in appointments" :key="appointment.appointmentId">
                 <td>{{ appointment.patientName }}</td>
                 <td>{{ appointment.symptoms }}</td>
                 <td>{{ appointment.slot }}</td>
                 <td>{{ appointment.status }}</td>
-
                 <td>
                   <select
                     class="form-select"
@@ -50,15 +48,17 @@
                 </td>
               </tr>
             </tbody>
-
           </table>
         </div>
+
       </div>
     </div>
   </div>
 </template>
 
 <script>
+const API_BASE = "https://e2m2b7y8c9.execute-api.us-east-1.amazonaws.com/prod";
+
 export default {
   name: "AppointmentsList",
 
@@ -73,53 +73,51 @@ export default {
   },
 
   methods: {
-    fetchAppointments() {
-      fetch(
-        "https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/appointments"
-      )
-        .then(res => res.json())
-        .then(data => {
-          const parsed = data.body ? JSON.parse(data.body) : data;
+    async fetchAppointments() {
+      try {
+        const res = await fetch(`${API_BASE}/appointments`);
 
-          console.log("Appointments:", parsed);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
 
-          this.appointments = parsed;
-        })
-        .catch(err => {
-          console.error("Error loading appointments:", err);
-        });
+        const data = await res.json();
+
+        const parsed = typeof data.body === "string"
+          ? JSON.parse(data.body)
+          : data;
+
+        this.appointments = parsed;
+
+      } catch (err) {
+        console.error("Failed to load appointments:", err);
+        alert("Failed to load appointments.");
+      }
     },
 
-    updateStatus(appointment, newStatus) {
-      const url =
-        `https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/appointments/${appointment.appointmentId}`;
-
-      fetch(url, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          status: newStatus
-        })
-      })
-        .then(async res => {
-          const rawBody = await res.text();
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${rawBody}`);
-          }
-
-          return JSON.parse(rawBody);
-        })
-        .then(() => {
-          appointment.status = newStatus;
-          alert("Status updated!");
-        })
-        .catch(err => {
-          console.error("Failed to update status:", err);
-          alert("Update failed. Check console.");
+    async updateStatus(appointment, newStatus) {
+      try {
+        const res = await fetch(`${API_BASE}/appointments/${appointment.appointmentId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ status: newStatus })
         });
+
+        const rawBody = await res.text();
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${rawBody}`);
+        }
+
+        appointment.status = newStatus;
+        alert("Status updated!");
+
+      } catch (err) {
+        console.error("Failed to update status:", err);
+        alert("Update failed.");
+      }
     }
   }
 };
