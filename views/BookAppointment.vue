@@ -3,9 +3,7 @@
     <nav class="navbar navbar-light bg-white shadow-sm mb-4">
       <div class="container d-flex justify-content-between align-items-center">
         <span class="fw-bold fs-5">Doctor Appointments</span>
-        <router-link to="/appointments" class="btn btn-outline-primary">
-          ⇆ Switch Page
-        </router-link>
+        <router-link to="/appointments" class="btn btn-outline-primary">⇆ Switch Page</router-link>
       </div>
     </nav>
 
@@ -15,43 +13,24 @@
 
         <form class="row g-3" @submit.prevent="submitAppointment">
           <div class="col-12">
-            <input
-              v-model="name"
-              type="text"
-              class="form-control"
-              placeholder="Your Name"
-              required
-            />
+            <input v-model="name" type="text" class="form-control" placeholder="Your Name" required />
           </div>
 
           <div class="col-12">
-            <input
-              v-model="symptoms"
-              type="text"
-              class="form-control"
-              placeholder="Symptoms"
-              required
-            />
+            <input v-model="symptoms" type="text" class="form-control" placeholder="Symptoms" required />
           </div>
 
           <div class="col-12">
             <select v-model="selectedSlot" class="form-select" required>
               <option disabled value="">Select a Time Slot</option>
-
-              <option
-                v-for="slot in slots"
-                :key="slot"
-                :value="slot"
-              >
+              <option v-for="slot in slots" :key="slot" :value="slot">
                 {{ slot }}
               </option>
             </select>
           </div>
 
           <div class="col-12">
-            <button type="submit" class="btn btn-primary w-100">
-              Book
-            </button>
+            <button type="submit" class="btn btn-primary w-100">Book</button>
           </div>
         </form>
       </div>
@@ -60,6 +39,8 @@
 </template>
 
 <script>
+const API_BASE = "https://e2m2b7y8c9.execute-api.us-east-1.amazonaws.com/prod";
+
 export default {
   name: "BookAppointment",
 
@@ -77,56 +58,64 @@ export default {
   },
 
   methods: {
-    fetchSlots() {
-      fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/slots")
-        .then(res => res.json())
-        .then(data => {
-          console.log("API response:", data);
+    async fetchSlots() {
+      try {
+        const res = await fetch(`${API_BASE}/slots`);
 
-          const parsed = JSON.parse(data.body);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
 
-          this.slots = parsed
-            .filter(item => item.isBooked === false)
-            .map(item => item.slots);
+        const data = await res.json();
 
-          console.log("Final slots:", this.slots);
-        })
-        .catch(err => {
-          console.error("Error loading slots:", err);
-          alert("Failed to load time slots.");
-        });
+        const parsed = typeof data.body === "string"
+          ? JSON.parse(data.body)
+          : data;
+
+        this.slots = parsed
+          .filter(slot => slot.isBooked === false)
+          .map(slot => slot.slot);
+
+      } catch (err) {
+        console.error("Failed to load time slots:", err);
+        alert("Failed to load time slots.");
+      }
     },
 
-    submitAppointment() {
+    async submitAppointment() {
       const payload = {
         patientName: this.name,
         symptoms: this.symptoms,
         slot: this.selectedSlot
       };
 
-      fetch("https://v42r2hsvb3.execute-api.eu-north-1.amazonaws.com/prod/appointments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      })
-        .then(res => res.json())
-        .then(data => {
-          console.log("Appointment response:", data);
-
-          alert("Appointment booked!");
-
-          this.name = "";
-          this.symptoms = "";
-          this.selectedSlot = "";
-
-          this.fetchSlots();
-        })
-        .catch(err => {
-          console.error("Error booking appointment:", err);
-          alert("Failed to book appointment.");
+      try {
+        const res = await fetch(`${API_BASE}/appointments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
         });
+
+        const rawBody = await res.text();
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${rawBody}`);
+        }
+
+        alert("Appointment booked!");
+
+        this.name = "";
+        this.symptoms = "";
+        this.selectedSlot = "";
+
+        this.fetchSlots();
+
+      } catch (err) {
+        console.error("Error booking appointment:", err);
+        alert("Failed to book appointment.");
+      }
     }
   }
 };
