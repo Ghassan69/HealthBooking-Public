@@ -61,11 +61,6 @@ export default {
     async fetchSlots() {
       try {
         const res = await fetch(`${API_BASE}/slots`);
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
         const data = await res.json();
 
         const parsed = typeof data.body === "string"
@@ -99,6 +94,7 @@ export default {
         });
 
         const rawBody = await res.text();
+        console.log("BOOK RESPONSE:", rawBody);
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${rawBody}`);
@@ -110,7 +106,7 @@ export default {
         this.symptoms = "";
         this.selectedSlot = "";
 
-        this.fetchSlots();
+        await this.fetchSlots();
 
       } catch (err) {
         console.error("Error booking appointment:", err);
